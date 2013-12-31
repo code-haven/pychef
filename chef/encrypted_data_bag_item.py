@@ -22,7 +22,7 @@ class EncryptedDataBagItem(chef.DataBagItem):
         if key == 'id':
             self.raw_data[key] = value
         else:
-            self.raw_data[key] = EncryptedDataBagItem.Encryptors.create_encryptor(self.api.encryption_key, value, 1).to_dict()
+            self.raw_data[key] = EncryptedDataBagItem.Encryptors.create_encryptor(self.api.encryption_key, value, self.api.encryption_version).to_dict()
 
     @staticmethod
     def get_version(data):
@@ -32,15 +32,15 @@ class EncryptedDataBagItem(chef.DataBagItem):
             else:
                 raise ChefUnsupportedEncryptionVersionError(data['version'])
         else:
-            # Should be 0 after implementing DecryptorVersion0
-            return "1"
+            return 0
 
     class Encryptors(object):
         @staticmethod
         def create_encryptor(key, data, version):
             try:
                 return {
-                    1: EncryptedDataBagItem.Encryptors.EncryptorVersion1(key, data)
+                    1: EncryptedDataBagItem.Encryptors.EncryptorVersion1(key, data),
+                    2: EncryptedDataBagItem.Encryptors.EncryptorVersion2(key, data)
                     }[version]
             except KeyError:
                 raise ChefUnsupportedEncryptionVersionError(version)
@@ -48,6 +48,7 @@ class EncryptedDataBagItem(chef.DataBagItem):
         class EncryptorVersion1(object):
             VERSION = 1
             def __init__(self, key, data):
+                self.plain_key = key
                 self.key = hashlib.sha256(key).digest()
                 self.data = data
                 self.iv = os.urandom(8).encode('hex')
@@ -68,6 +69,27 @@ class EncryptedDataBagItem(chef.DataBagItem):
                         "version": self.VERSION,
                         "cipher": "aes-256-cbc"
                         }
+
+        class EncryptorVersion2(EncryptorVersion1):
+            VERSION = 2
+
+            def __init__(self, key, data):
+                super(EncryptedDataBagItem.Encryptors.EncryptorVersion2, self).__init__(key, data)
+                self.hmac = None
+
+            def encrypt(self):
+                self.encrypted_data = super(EncryptedDataBagItem.Encryptors.EncryptorVersion2, self).encrypt()
+                self.hmac = (self.hmac if self.hmac is not None else self._generate_hmac())
+                return self.encrypted_data
+
+            def _generate_hmac(self):
+                raw_hmac = hmac.new(self.plain_key, base64.standard_b64encode(self.encrypted_data), hashlib.sha256).digest()
+                return raw_hmac
+
+            def to_dict(self):
+                result = super(EncryptedDataBagItem.Encryptors.EncryptorVersion2, self).to_dict()
+                result['hmac'] = base64.standard_b64encode(self.hmac)
+                return result
 
     class Decryptors(object):
         STRIP_CHARS = map(chr,range(0,31))
