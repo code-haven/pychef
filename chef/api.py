@@ -70,7 +70,7 @@ class ChefAPI(object):
     env_value_re = re.compile(r'ENV\[(.+)\]')
     ruby_string_re = re.compile(r'^\s*(["\'])(.*?)\1\s*$')
 
-    def __init__(self, url, key, client, version='0.10.8', headers={}, secret_file=None):
+    def __init__(self, url, key, client, version='0.10.8', headers={}, secret_file=None, encryption_version=1):
         self.url = url.rstrip('/')
         self.parsed_url = urlparse.urlparse(self.url)
         if not isinstance(key, Key):
@@ -78,6 +78,7 @@ class ChefAPI(object):
         self.key = key
         self.client = client
         self.version = version
+        self.encryption_version = encryption_version
         self.headers = dict((k.lower(), v) for k, v in headers.iteritems())
         self.version_parsed = pkg_resources.parse_version(self.version)
         self.platform = self.parsed_url.hostname == 'api.opscode.com'
@@ -135,6 +136,9 @@ class ChefAPI(object):
             elif key == 'node_name':
                 log.debug('Found client name: %r', value)
                 client_name = value
+            elif key == 'data_bag_encrypt_version':
+                log.debug('Found data bag encryption version: %r', value)
+                encryption_version = value
             elif key == 'client_key':
                 log.debug('Found key path: %r', value)
                 key_path = value
@@ -175,7 +179,9 @@ class ChefAPI(object):
             return
         if not client_name:
             client_name = socket.getfqdn()
-        return cls(url, key_path, client_name, secret_file)
+        if not encryption_version:
+            encryption_version = 1
+        return cls(url, key_path, client_name, secret_file, encryption_version)
 
     @staticmethod
     def get_global():
