@@ -27,12 +27,12 @@ class EncryptedDataBagItem(chef.DataBagItem):
     @staticmethod
     def get_version(data):
         if data.has_key('version'):
-            if data['version'] in EncryptedDataBagItem.SUPPORTED_ENCRYPTION_VERSIONS:
+            if str(data['version']) in map(str, EncryptedDataBagItem.SUPPORTED_ENCRYPTION_VERSIONS):
                 return data['version']
             else:
                 raise ChefUnsupportedEncryptionVersionError(data['version'])
         else:
-            return 0
+            return 1
 
     class Encryptors(object):
         @staticmethod
