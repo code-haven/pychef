@@ -26,3 +26,7 @@ class APITestCase(unittest2.TestCase):
             self.assertEqual(api.client, 'foobar')
         finally:
             del os.environ['_PYCHEF_TEST_']
+
+    def test_encryption(self):
+        api = self.load('encryption.rb')
+        self.assertEqual(api.encryption_version, '2')
