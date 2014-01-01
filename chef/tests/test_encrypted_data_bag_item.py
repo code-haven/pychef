@@ -1,9 +1,10 @@
 from chef import DataBag, EncryptedDataBagItem
 from chef.exceptions import ChefError, ChefUnsupportedEncryptionVersionError, ChefDecryptionError
-from chef.tests import ChefTestCase
+from chef.tests import ChefTestCase, TEST_ROOT
 from chef.api import ChefAPI
 
 import copy
+import os
 
 class EncryptedDataBagItemTestCase(ChefTestCase):
     def setUp(self):
@@ -39,7 +40,7 @@ class EncryptedDataBagItemTestCase(ChefTestCase):
         self.assertRaises(ChefUnsupportedEncryptionVersionError, EncryptedDataBagItem.get_version, {"version": "not a number"})
 
     def test__getitem__(self):
-        api = ChefAPI('https://chef_test:3000', 'client.pem', 'admin', secret_file='encryption_key')
+        api = ChefAPI('https://chef_test:3000', os.path.join(TEST_ROOT, 'client.pem'), 'admin', secret_file=os.path.join(TEST_ROOT, 'encryption_key'))
         bag = DataBag('test_1')
         item = EncryptedDataBagItem(bag, 'test', api, True)
         item.raw_data = copy.deepcopy(self.knife_examples)
@@ -57,7 +58,7 @@ class EncryptedDataBagItemTestCase(ChefTestCase):
         self.assertRaises(ChefDecryptionError, item.__getitem__, 'pychef_test_ver2')
 
     def test__set_item__(self):
-        api = ChefAPI('https://chef_test:3000', 'client.pem', 'admin', secret_file='encryption_key')
+        api = ChefAPI('https://chef_test:3000', os.path.join(TEST_ROOT, 'client.pem'), 'admin', secret_file=os.path.join(TEST_ROOT, 'encryption_key'))
         bag = DataBag('test_1')
         item = EncryptedDataBagItem(bag, 'test', api, True)
         item['id'] = 'test'
