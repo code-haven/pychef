@@ -1,12 +1,15 @@
 import sys
 from ctypes import *
 
-if sys.platform == 'win32' or sys.platform == 'cygwin':
-    _eay = CDLL('libeay32.dll')
-elif sys.platform == 'darwin':
-    _eay = CDLL('libcrypto.dylib')
-else:
-    _eay = CDLL('libcrypto.so')
+def load_crypto_lib():
+    if sys.platform == 'win32' or sys.platform == 'cygwin':
+        _eay = CDLL('libeay32.dll')
+    elif sys.platform == 'darwin':
+        _eay = CDLL('libcrypto.dylib')
+    else:
+        _eay = CDLL('libcrypto.so')
+    return _eay
+_eay = load_crypto_lib()
 
 #unsigned long ERR_get_error(void);
 ERR_get_error = _eay.ERR_get_error
@@ -157,7 +160,7 @@ class Key(object):
             buf = create_string_buffer(self.raw, len(self.raw))
         else:
             buf = create_string_buffer(self.raw)
-        
+
         bio = BIO_new_mem_buf(buf, len(buf))
         try:
             self.key = PEM_read_bio_RSAPrivateKey(bio, 0, 0, 0)

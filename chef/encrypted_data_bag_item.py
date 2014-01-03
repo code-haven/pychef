@@ -58,7 +58,8 @@ class EncryptedDataBagItem(chef.DataBagItem):
             def encrypt(self):
                 if self.encrypted_data is None:
                     data = json.dumps({'json_wrapper': self.data})
-                    self.encrypted_data = self.encryptor.update(data) + self.encryptor.final()
+                    update_data = self.encryptor.update(data)
+                    self.encrypted_data = update_data + self.encryptor.final()
                     del self.encryptor
                 return self.encrypted_data
 
