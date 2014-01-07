@@ -1,5 +1,5 @@
 from chef.exceptions import ChefUnsupportedEncryptionVersionError, ChefDecryptionError
-from M2Crypto.EVP import Cipher
+from chef.aes import AES256Cipher
 
 import os
 import hmac
@@ -52,14 +52,13 @@ class EncryptedDataBagItem(chef.DataBagItem):
                 self.key = hashlib.sha256(key).digest()
                 self.data = data
                 self.iv = os.urandom(8).encode('hex')
-                self.encryptor = Cipher(alg=EncryptedDataBagItem.AES_MODE, key=self.key, iv=self.iv, op=1)
+                self.encryptor = AES256Cipher(key=self.key, iv=self.iv)
                 self.encrypted_data = None
 
             def encrypt(self):
                 if self.encrypted_data is None:
                     data = json.dumps({'json_wrapper': self.data})
-                    update_data = self.encryptor.update(data)
-                    self.encrypted_data = update_data + self.encryptor.final()
+                    self.encrypted_data = self.encryptor.encrypt(data)
                     del self.encryptor
                 return self.encrypted_data
 
@@ -108,10 +107,10 @@ class EncryptedDataBagItem(chef.DataBagItem):
                 self.key = hashlib.sha256(key).digest()
                 self.data = base64.standard_b64decode(data)
                 self.iv = base64.standard_b64decode(iv)
-                self.decryptor = Cipher(alg=EncryptedDataBagItem.AES_MODE, key=self.key, iv=self.iv, op=0)
+                self.decryptor = AES256Cipher(key=self.key, iv=self.iv)
 
             def decrypt(self):
-                value = self.decryptor.update(self.data) + self.decryptor.final()
+                value = self.decryptor.decrypt(self.data)
                 del self.decryptor
                 # Strip all the whitespace and sequence control characters
                 value = value.strip(reduce(lambda x,y: "%s%s" % (x,y), EncryptedDataBagItem.Decryptors.STRIP_CHARS))
