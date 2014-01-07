@@ -1,12 +1,12 @@
 from chef.exceptions import ChefUnsupportedEncryptionVersionError, ChefDecryptionError
 from chef.aes import AES256Cipher
+from chef.utils import json
 
 import os
 import hmac
 import base64
 import chef
 import hashlib
-import simplejson as json
 
 class EncryptedDataBagItem(chef.DataBagItem):
     SUPPORTED_ENCRYPTION_VERSIONS = (1,2)
