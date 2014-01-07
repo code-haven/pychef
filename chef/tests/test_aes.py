@@ -18,7 +18,6 @@ class AES256CipherTestCase(ChefTestCase):
         encrypted_value = self.cipher.encrypt('{"json_wrapper":"secr3t c0d3"}')
         self.assertEquals(base64.standard_b64encode(encrypted_value).strip(), "Ym5T8umtSd0wgjDYq1ZDK5dAh6OjgrTxlloGNf2xYhg=")
 
-
     def test_decrypt(self):
         decrypted_value = self.cipher.decrypt(base64.standard_b64decode('Ym5T8umtSd0wgjDYq1ZDK5dAh6OjgrTxlloGNf2xYhg=\n'))
         self.assertEquals(decrypted_value, '{"json_wrapper":"secr3t c0d3"}')

@@ -94,40 +94,37 @@ class AES256Cipher():
         self.salt = create_string_buffer(salt)
 
         self.encryptor = EVP_CIPHER_CTX()
-        EVP_CIPHER_CTX_init(byref(self.encryptor))
-        EVP_CipherInit(byref(self.encryptor), EVP_aes_256_cbc(), self.key_data, self.iv, c_int(1))
-        EVP_CIPHER_CTX_set_padding(byref(self.encryptor), c_int(1))
+        self._init_cipher(byref(self.encryptor), 1)
 
         self.decryptor = EVP_CIPHER_CTX()
-        EVP_CIPHER_CTX_init(byref(self.decryptor))
-        EVP_CipherInit(byref(self.decryptor), EVP_aes_256_cbc(), self.key_data, self.iv, c_int(0))
-        EVP_CIPHER_CTX_set_padding(byref(self.decryptor), c_int(1))
+        self._init_cipher(byref(self.decryptor), 0)
+
+    def _init_cipher(self, ctypes_cipher, crypt_mode):
+        """ crypt_mode parameter is a flag deciding whether the cipher should be
+        used for encryption (1) or decryption (0)  """
+        EVP_CIPHER_CTX_init(ctypes_cipher)
+        EVP_CipherInit(ctypes_cipher, EVP_aes_256_cbc(), self.key_data, self.iv, c_int(crypt_mode))
+        EVP_CIPHER_CTX_set_padding(ctypes_cipher, c_int(1))
+
+    def _process_data(self, ctypes_cipher, data):
+        length = c_int(len(data))
+        buf_length = c_int(length.value + AES_BLOCK_SIZE)
+        buf = create_string_buffer(buf_length.value)
+
+        final_buf = create_string_buffer(AES_BLOCK_SIZE)
+        final_length = c_int(0)
+
+        EVP_CipherUpdate(ctypes_cipher, buf, byref(buf_length), create_string_buffer(data), length)
+        EVP_CipherFinal(ctypes_cipher, final_buf, byref(final_length))
+
+        return string_at(buf, buf_length) + string_at(final_buf, final_length)
+
 
     def encrypt(self, data):
-        length = c_int(len(data))
-        buf_length = c_int(length.value + AES_BLOCK_SIZE)
-        buf = create_string_buffer(buf_length.value)
-
-        final_buf = create_string_buffer(AES_BLOCK_SIZE)
-        final_length = c_int(0)
-
-        EVP_CipherUpdate(byref(self.encryptor), buf, byref(buf_length), create_string_buffer(data), length)
-        EVP_CipherFinal(byref(self.encryptor), final_buf, byref(final_length))
-
-        return string_at(buf, buf_length) + string_at(final_buf, final_length)
+        return self._process_data(byref(self.encryptor), data)
 
     def decrypt(self, data):
-        length = c_int(len(data))
-        buf_length = c_int(length.value + AES_BLOCK_SIZE)
-        buf = create_string_buffer(buf_length.value)
-
-        final_buf = create_string_buffer(AES_BLOCK_SIZE)
-        final_length = c_int(0)
-
-        EVP_CipherUpdate(byref(self.decryptor), buf, byref(buf_length), create_string_buffer(data), length)
-        EVP_CipherFinal(byref(self.decryptor), final_buf, byref(final_length))
-
-        return string_at(buf, buf_length) + string_at(final_buf, final_length)
+        return self._process_data(byref(self.decryptor), data)
 
 
 
