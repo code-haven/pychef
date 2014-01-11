@@ -93,8 +93,6 @@ class EncryptedDataBagItem(DataBagItem):
                 return result
 
     class Decryptors(object):
-        STRIP_CHARS = map(chr,range(0,31))
-
         @staticmethod
         def create_decryptor(key, data):
             version = EncryptedDataBagItem.get_version(data)
@@ -113,8 +111,6 @@ class EncryptedDataBagItem(DataBagItem):
             def decrypt(self):
                 value = self.decryptor.decrypt(self.data)
                 del self.decryptor
-                # Strip all the whitespace and sequence control characters
-                value = value.strip(reduce(lambda x,y: "%s%s" % (x,y), EncryptedDataBagItem.Decryptors.STRIP_CHARS))
                 # After decryption we should get a string with JSON
                 try:
                     value = json.loads(value)
