@@ -2,6 +2,7 @@ from chef import DataBag, EncryptedDataBagItem
 from chef.exceptions import ChefError, ChefUnsupportedEncryptionVersionError, ChefDecryptionError
 from chef.tests import ChefTestCase, TEST_ROOT
 from chef.api import ChefAPI
+from chef.encrypted_data_bag_item import get_decryption_version
 
 import copy
 import os
@@ -30,14 +31,6 @@ class EncryptedDataBagItemTestCase(ChefTestCase):
                 "cipher": "aes-256-cbc"
                 }
             }
-
-    def test_get_version(self):
-        self.assertEqual(EncryptedDataBagItem.get_version({"version": "1"}), '1')
-        self.assertEqual(EncryptedDataBagItem.get_version({"version": 1}), 1)
-        self.assertEqual(EncryptedDataBagItem.get_version({"version": "2"}), '2')
-        self.assertEqual(EncryptedDataBagItem.get_version({"version": 2}), 2)
-        self.assertRaises(ChefUnsupportedEncryptionVersionError, EncryptedDataBagItem.get_version, {"version": 0})
-        self.assertRaises(ChefUnsupportedEncryptionVersionError, EncryptedDataBagItem.get_version, {"version": "not a number"})
 
     def test__getitem__(self):
         api = ChefAPI('https://chef_test:3000', os.path.join(TEST_ROOT, 'client.pem'), 'admin', secret_file=os.path.join(TEST_ROOT, 'encryption_key'))
@@ -81,3 +74,13 @@ class EncryptedDataBagItemTestCase(ChefTestCase):
         self.assertIsNotNone(item.raw_data['pychef_test_ver2']['iv'])
         self.assertIsNotNone(item.raw_data['pychef_test_ver2']['hmac'])
         self.assertIsNotNone(item.raw_data['pychef_test_ver2']['encrypted_data'])
+
+class EncryptedDataBagItemHelpersTestCase(ChefTestCase):
+    def test_get_version(self):
+        self.assertEqual(get_decryption_version({"version": "1"}), '1')
+        self.assertEqual(get_decryption_version({"version": 1}), 1)
+        self.assertEqual(get_decryption_version({"version": "2"}), '2')
+        self.assertEqual(get_decryption_version({"version": 2}), 2)
+        self.assertRaises(ChefUnsupportedEncryptionVersionError, get_decryption_version, {"version": 0})
+        self.assertRaises(ChefUnsupportedEncryptionVersionError, get_decryption_version, {"version": "not a number"})
+
