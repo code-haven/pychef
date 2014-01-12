@@ -116,7 +116,7 @@ class EncryptedDataBagItem(DataBagItem):
                 try:
                     value = json.loads(value)
                 except ValueError:
-                    raise ChefDecryptionError()
+                    raise ChefDecryptionError("Error decrypting data bag value. Most likely the provided key is incorrect")
                 return value['json_wrapper']
 
         class DecryptorVersion2(DecryptorVersion1):
@@ -139,5 +139,5 @@ class EncryptedDataBagItem(DataBagItem):
                 if self._validate_hmac():
                     return super(EncryptedDataBagItem.Decryptors.DecryptorVersion2, self).decrypt()
                 else:
-                    raise ChefDecryptionError()
+                    raise ChefDecryptionError("Error decrypting data bag value. HMAC validation failed.")
 
