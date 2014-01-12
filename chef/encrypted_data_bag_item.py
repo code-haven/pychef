@@ -8,6 +8,7 @@ import hmac
 import base64
 import chef
 import hashlib
+import itertools
 
 class EncryptedDataBagItem(DataBagItem):
     SUPPORTED_ENCRYPTION_VERSIONS = (1,2)
@@ -130,10 +131,8 @@ class EncryptedDataBagItem(DataBagItem):
                 expected_bytes = map(ord, expected_hmac)
                 candidate_hmac_bytes = map(ord, self.hmac)
                 valid = len(expected_bytes) ^ len(candidate_hmac_bytes)
-                index = 0
-                for value in expected_bytes:
-                    valid |= value ^ candidate_hmac_bytes[index]
-                    index += 1
+                for expected_byte, candidate_byte in itertools.izip_longest(expected_bytes, candidate_hmac_bytes):
+                    valid |= expected_byte ^ candidate_byte
                 return valid == 0
 
             def decrypt(self):
