@@ -86,7 +86,7 @@ class EVP_CIPHER_CTX(Structure):
             ("final", c_ubyte * EVP_MAX_BLOCK_LENGTH) ]
 
 
-class AES256Cipher():
+class AES256Cipher(object):
     def __init__(self, key, iv, salt='12345678'):
         self.key_data = create_string_buffer(key)
         self.iv = create_string_buffer(iv)
