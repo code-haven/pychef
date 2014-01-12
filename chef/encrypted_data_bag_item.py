@@ -61,7 +61,6 @@ class EncryptedDataBagItem(DataBagItem):
                 if self.encrypted_data is None:
                     data = json.dumps({'json_wrapper': self.data})
                     self.encrypted_data = self.encryptor.encrypt(data)
-                    del self.encryptor
                 return self.encrypted_data
 
             def to_dict(self):
@@ -111,7 +110,6 @@ class EncryptedDataBagItem(DataBagItem):
 
             def decrypt(self):
                 value = self.decryptor.decrypt(self.data)
-                del self.decryptor
                 # After decryption we should get a string with JSON
                 try:
                     value = json.loads(value)
