@@ -126,11 +126,9 @@ class EncryptedDataBagItem(DataBagItem):
 
             def _validate_hmac(self):
                 expected_hmac = hmac.new(self.key, self.encoded_data, hashlib.sha256).digest()
-                expected_bytes = map(ord, expected_hmac)
-                candidate_hmac_bytes = map(ord, self.hmac)
-                valid = len(expected_bytes) ^ len(candidate_hmac_bytes)
-                for expected_byte, candidate_byte in itertools.izip_longest(expected_bytes, candidate_hmac_bytes):
-                    valid |= expected_byte ^ candidate_byte
+                valid = len(expected_hmac) ^ len(self.hmac)
+                for expected_char, candidate_char in itertools.izip_longest(expected_hmac, self.hmac):
+                    valid |= ord(expected_char) ^ ord(candidate_char)
                 return valid == 0
 
             def decrypt(self):
