@@ -16,6 +16,14 @@ from six.moves import filterfalse, zip_longest
 
 
 class EncryptedDataBagItem(DataBagItem):
+    """An Encrypted Chef data bag item object.
+
+    Encrypted Databag Items behave in the same way as :class:`DatabagItem`
+    except the keys and values are encrypted as detailed in the Chef docs:
+    https://docs.chef.io/data_bags.html#encrypt-a-data-bag-item
+
+    Refer to the :class:`DatabagItem` documentation for usage.
+    """
     SUPPORTED_ENCRYPTION_VERSIONS = (1,2)
     AES_MODE = 'aes_256_cbc'
 

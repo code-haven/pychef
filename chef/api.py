@@ -50,6 +50,10 @@ class ChefAPI(object):
 
             with ChefAPI('http://localhost:4000', 'client.pem', 'admin'):
                 n = Node('web1')
+
+        In order to use :class:`EncryptedDataBagItem` object it is necessary
+        to specify either a path to a file containing the Chef secret key and
+        the Encrypted Databag version to be used (v1 by default)
     """
 
     ruby_value_re = re.compile(r'#\{([^}]+)\}')
