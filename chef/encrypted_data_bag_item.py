@@ -1,14 +1,19 @@
 from chef.exceptions import ChefUnsupportedEncryptionVersionError, ChefDecryptionError
-from chef.aes import AES256Cipher
+from chef.aes import AES256Cipher, EVP_MAX_IV_LENGTH
 from chef.utils import json
 from chef.data_bag import DataBagItem
 
 import os
+import sys
 import hmac
 import base64
 import chef
 import hashlib
+import binascii
 import itertools
+import six
+from six.moves import filterfalse, zip_longest
+
 
 class EncryptedDataBagItem(DataBagItem):
     SUPPORTED_ENCRYPTION_VERSIONS = (1,2)
@@ -39,10 +44,10 @@ class EncryptorVersion1(object):
     VERSION = 1
 
     def __init__(self, key, data):
-        self.plain_key = key
-        self.key = hashlib.sha256(key).digest()
+        self.plain_key = key.encode('utf8')
+        self.key = hashlib.sha256(key.encode('utf8')).digest()
         self.data = data
-        self.iv = os.urandom(8).encode('hex')
+        self.iv = binascii.hexlify(os.urandom(int(EVP_MAX_IV_LENGTH/2)))
         self.encryptor = AES256Cipher(key=self.key, iv=self.iv)
         self.encrypted_data = None
 
@@ -54,8 +59,8 @@ class EncryptorVersion1(object):
 
     def to_dict(self):
         return {
-            "encrypted_data": base64.standard_b64encode(self.encrypt()),
-            "iv": base64.standard_b64encode(self.iv),
+            "encrypted_data": base64.standard_b64encode(self.encrypt()).decode('utf8'),
+            "iv": base64.standard_b64encode(self.iv).decode('utf8'),
             "version": self.VERSION,
             "cipher": "aes-256-cbc"
             }
@@ -78,11 +83,11 @@ class EncryptorVersion2(EncryptorVersion1):
 
     def to_dict(self):
         result = super(EncryptorVersion2, self).to_dict()
-        result['hmac'] = base64.standard_b64encode(self.hmac)
+        result['hmac'] = base64.standard_b64encode(self.hmac).decode('utf8')
         return result
 
 def get_decryption_version(data):
-    if data.has_key('version'):
+    if 'version' in data:
         if str(data['version']) in map(str, EncryptedDataBagItem.SUPPORTED_ENCRYPTION_VERSIONS):
             return data['version']
         else:
@@ -99,7 +104,7 @@ def create_decryptor(key, data):
 
 class DecryptorVersion1(object):
     def __init__(self, key, data, iv):
-        self.key = hashlib.sha256(key).digest()
+        self.key = hashlib.sha256(key.encode('utf8')).digest()
         self.data = base64.standard_b64decode(data)
         self.iv = base64.standard_b64decode(iv)
         self.decryptor = AES256Cipher(key=self.key, iv=self.iv)
@@ -120,10 +125,16 @@ class DecryptorVersion2(DecryptorVersion1):
         self.encoded_data = data
 
     def _validate_hmac(self):
-        expected_hmac = hmac.new(self.key, self.encoded_data, hashlib.sha256).digest()
+        encoded_data = self.encoded_data.encode('utf8')
+
+        expected_hmac = hmac.new(self.key, encoded_data, hashlib.sha256).digest()
         valid = len(expected_hmac) ^ len(self.hmac)
-        for expected_char, candidate_char in itertools.izip_longest(expected_hmac, self.hmac):
-            valid |= ord(expected_char) ^ ord(candidate_char)
+        for expected_char, candidate_char in zip_longest(expected_hmac, self.hmac):
+            if sys.version_info[0] > 2:
+                valid |= expected_char ^ candidate_char
+            else:
+                valid |= ord(expected_char) ^ ord(candidate_char)
+            
         return valid == 0
 
     def decrypt(self):

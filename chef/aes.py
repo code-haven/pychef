@@ -1,7 +1,8 @@
 import os
+import sys
 
 from ctypes import *
-from rsa import _eay, SSLError
+from chef.rsa import _eay, SSLError
 
 c_int_p = POINTER(c_int)
 
@@ -89,7 +90,7 @@ class AES256Cipher(object):
         self.key_data = create_string_buffer(key)
         self.iv = create_string_buffer(iv)
         self.encryptor = self.decryptor = None
-        self.salt = create_string_buffer(salt)
+        self.salt = create_string_buffer(salt.encode('utf8'))
 
         self.encryptor = EVP_CIPHER_CTX()
         self._init_cipher(byref(self.encryptor), 1)
@@ -105,6 +106,9 @@ class AES256Cipher(object):
         EVP_CIPHER_CTX_set_padding(ctypes_cipher, c_int(1))
 
     def _process_data(self, ctypes_cipher, data):
+        # Guard against str passed in when using python3
+        if sys.version_info[0] > 2 and isinstance(data, str):
+            data = data.encode('utf8')
         length = c_int(len(data))
         buf_length = c_int(length.value + AES_BLOCK_SIZE)
         buf = create_string_buffer(buf_length.value)
@@ -123,7 +127,3 @@ class AES256Cipher(object):
 
     def decrypt(self, data):
         return self._process_data(byref(self.decryptor), data)
-
-
-
-
