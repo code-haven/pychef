@@ -1,6 +1,8 @@
+import six
 import collections
 
 import pkg_resources
+from chef.acl import Acl
 
 from chef.api import ChefAPI
 from chef.exceptions import *
@@ -34,10 +36,8 @@ class ChefObjectMeta(type):
         cls.api_version_parsed = pkg_resources.parse_version(cls.api_version)
 
 
-class ChefObject(object):
+class ChefObject(six.with_metaclass(ChefObjectMeta, object)):
     """A base class for Chef API objects."""
-
-    __metaclass__ = ChefObjectMeta
     types = {}
 
     url = ''
@@ -63,7 +63,7 @@ class ChefObject(object):
         self._populate(data)
 
     def _populate(self, data):
-        for name, cls in self.__class__.attributes.iteritems():
+        for name, cls in six.iteritems(self.__class__.attributes):
             if name in data:
                 value = cls(data[name])
             else:
@@ -83,7 +83,7 @@ class ChefObject(object):
         """
         api = api or ChefAPI.get_global()
         cls._check_api_version(api)
-        names = [name for name, url in api[cls.url].iteritems()]
+        names = [name for name, url in six.iteritems(api[cls.url])]
         return ChefQuery(cls, names, api)
 
     @classmethod
@@ -94,7 +94,7 @@ class ChefObject(object):
         api = api or ChefAPI.get_global()
         cls._check_api_version(api)
         obj = cls(name, api, skip_load=True)
-        for key, value in kwargs.iteritems():
+        for key, value in six.iteritems(kwargs):
             setattr(obj, key, value)
         api.api_request('POST', cls.url, data=obj)
         return obj
@@ -106,7 +106,7 @@ class ChefObject(object):
         api = api or self.api
         try:
             api.api_request('PUT', self.url, data=self)
-        except ChefServerNotFoundError, e:
+        except ChefServerNotFoundError as e:
             # If you get a 404 during a save, just create it instead
             # This mirrors the logic in the Chef code
             api.api_request('POST', self.__class__.url, data=self)
@@ -122,7 +122,7 @@ class ChefObject(object):
             'json_class': 'Chef::'+self.__class__.__name__,
             'chef_type': self.__class__.__name__.lower(),
         }
-        for attr in self.__class__.attributes.iterkeys():
+        for attr in six.iterkeys(self.__class__.attributes):
             d[attr] = getattr(self, attr)
         return d
 
@@ -138,4 +138,7 @@ class ChefObject(object):
         # use for creating Chef objects without an API connection (just for
         # serialization perhaps).
         if api and cls.api_version_parsed > api.version_parsed:
-            raise ChefAPIVersionError, "Class %s is not compatible with API version %s" % (cls.__name__, api.version)
+            raise ChefAPIVersionError("Class %s is not compatible with API version %s" % (cls.__name__, api.version))
+
+    def get_acl(self):
+        return Acl(self.__class__.url.strip('/'), self.name, self.api)

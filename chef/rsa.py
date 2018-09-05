@@ -1,15 +1,12 @@
+import six
 import sys
 from ctypes import *
+from ctypes.util import find_library
 
-def load_crypto_lib():
-    if sys.platform == 'win32' or sys.platform == 'cygwin':
-        _eay = CDLL('libeay32.dll')
-    elif sys.platform == 'darwin':
-        _eay = CDLL('libcrypto.dylib')
-    else:
-        _eay = CDLL('libcrypto.so')
-    return _eay
-_eay = load_crypto_lib()
+if sys.platform == 'win32' or sys.platform == 'cygwin':
+    _eay = CDLL('libeay32.dll')
+else:
+    _eay = CDLL(find_library('crypto'))
 
 #unsigned long ERR_get_error(void);
 ERR_get_error = _eay.ERR_get_error
@@ -144,18 +141,17 @@ class Key(object):
         self.public = False
         if not fp:
             return
-        if isinstance(fp, basestring):
-            if fp.startswith('-----'):
-                # PEM formatted text
-                self.raw = fp
-            else:
-                self.raw = open(fp, 'rb').read()
+        if isinstance(fp, six.binary_type) and fp.startswith(b'-----'):
+            # PEM formatted text
+            self.raw = fp
+        elif isinstance(fp, six.string_types):
+            self.raw = open(fp, 'rb').read()
         else:
             self.raw = fp.read()
         self._load_key()
 
     def _load_key(self):
-        if '\0' in self.raw:
+        if b'\0' in self.raw:
             # Raw string has embedded nulls, treat it as binary data
             buf = create_string_buffer(self.raw, len(self.raw))
         else:
@@ -182,7 +178,10 @@ class Key(object):
     def private_encrypt(self, value, padding=RSA_PKCS1_PADDING):
         if self.public:
             raise SSLError('private method cannot be used on a public key')
-        buf = create_string_buffer(value, len(value))
+        if six.PY3 and not isinstance(value, bytes):
+            buf = create_string_buffer(value.encode(), len(value))
+        else:
+            buf = create_string_buffer(value, len(value))
         size = RSA_size(self.key)
         output = create_string_buffer(size)
         ret = RSA_private_encrypt(len(buf), buf, output, self.key, padding)
@@ -191,13 +190,19 @@ class Key(object):
         return output.raw[:ret]
 
     def public_decrypt(self, value, padding=RSA_PKCS1_PADDING):
-        buf = create_string_buffer(value, len(value))
+        if six.PY3 and not isinstance(value, bytes):
+            buf = create_string_buffer(value.encode(), len(value))
+        else:
+            buf = create_string_buffer(value, len(value))
         size = RSA_size(self.key)
         output = create_string_buffer(size)
         ret = RSA_public_decrypt(len(buf), buf, output, self.key, padding)
         if ret <= 0:
             raise SSLError('Unable to decrypt data')
-        return output.raw[:ret]
+        if six.PY3 and isinstance(output.raw, bytes):
+            return output.raw[:ret].decode()
+        else:
+            return output.raw[:ret]
 
     def private_export(self):
         if self.public:

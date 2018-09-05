@@ -1,9 +1,7 @@
 import os
 
 from ctypes import *
-from rsa import load_crypto_lib, SSLError
-
-_eay = load_crypto_lib()
+from rsa import _eay, SSLError
 
 c_int_p = POINTER(c_int)
 
