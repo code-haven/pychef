@@ -121,7 +121,7 @@ class DecryptorVersion1(object):
         value = self.decryptor.decrypt(self.data)
         # After decryption we should get a string with JSON
         try:
-            value = json.loads(value)
+            value = json.loads(value.decode('utf-8'))
         except ValueError:
             raise ChefDecryptionError("Error decrypting data bag value. Most likely the provided key is incorrect")
         return value['json_wrapper']
