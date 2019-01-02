@@ -48,3 +48,7 @@ class APITestCase(unittest2.TestCase):
         for item in invalids:
             self.assertRaises(
                 ValueError, ChefAPI, 'foobar', item, 'user')
+
+    def test_encryption(self):
+        api = self.load('encryption.rb')
+        self.assertEqual(api.encryption_version, '2')

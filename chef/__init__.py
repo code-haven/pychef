@@ -5,6 +5,7 @@ __version__ = (0, 3, 0)
 from chef.api import ChefAPI, autoconfigure
 from chef.client import Client
 from chef.data_bag import DataBag, DataBagItem
+from chef.encrypted_data_bag_item import EncryptedDataBagItem
 from chef.exceptions import ChefError
 from chef.node import Node
 from chef.role import Role

@@ -50,13 +50,19 @@ class ChefAPI(object):
 
             with ChefAPI('http://localhost:4000', 'client.pem', 'admin'):
                 n = Node('web1')
+
+        In order to use :class:`EncryptedDataBagItem` object it is necessary
+        to specify either a path to a file containing the Chef secret key and
+        the Encrypted Databag version to be used (v1 by default).
+        If both secret_file and secret_key are passed as argument, secret_key
+        will take precedence.
     """
 
     ruby_value_re = re.compile(r'#\{([^}]+)\}')
     env_value_re = re.compile(r'ENV\[(.+)\]')
     ruby_string_re = re.compile(r'^\s*(["\'])(.*?)\1\s*$')
 
-    def __init__(self, url, key, client, version='0.10.8', headers={}, ssl_verify=True):
+    def __init__(self, url, key, client, version='0.10.8', headers={}, ssl_verify=True, secret_file=None, secret_key=None, encryption_version=1):
         self.url = url.rstrip('/')
         self.parsed_url = six.moves.urllib.parse.urlparse(self.url)
         if not isinstance(key, Key):
@@ -67,11 +73,22 @@ class ChefAPI(object):
         self.client = client
         self.version = version
         self.headers = dict((k.lower(), v) for k, v in six.iteritems(headers))
+        self.encryption_version = encryption_version
         self.version_parsed = pkg_resources.parse_version(self.version)
         self.platform = self.parsed_url.hostname == 'api.opscode.com'
         self.ssl_verify = ssl_verify
         if not api_stack_value():
             self.set_default()
+        self.encryption_key = None
+        # Read the secret key from the input file
+        if secret_file is not None:
+            self.secret_file = secret_file
+            if os.path.exists(self.secret_file):
+                self.encryption_key = open(self.secret_file).read().strip()
+        if secret_key is not None:
+            if encryption_key is not None:
+                log.debug('Two encryption key found (file and parameter). The key passed as parameter will be used')
+            self.encryption_key = secret_key
 
     @classmethod
     def from_config_file(cls, path):
@@ -83,8 +100,8 @@ class ChefAPI(object):
             # Can't even read the config file
             log.debug('Unable to read config file "%s"', path)
             return
-        url = key_path = client_name = None
         ssl_verify = True
+        url = key_path = client_name = encryption_version = None
         for line in open(path):
             if not line.strip() or line.startswith('#'):
                 continue # Skip blanks and comments
@@ -123,6 +140,9 @@ class ChefAPI(object):
             elif key == 'node_name':
                 log.debug('Found client name: %r', value)
                 client_name = value
+            elif key == 'data_bag_encrypt_version':
+                log.debug('Found data bag encryption version: %r', value)
+                encryption_version = value
             elif key == 'client_key':
                 log.debug('Found key path: %r', value)
                 key_path = value
@@ -161,7 +181,9 @@ class ChefAPI(object):
             return
         if not client_name:
             client_name = socket.getfqdn()
-        return cls(url, key_path, client_name, ssl_verify=ssl_verify)
+        if not encryption_version:
+            encryption_version = 1
+        return cls(url, key_path, client_name, ssl_verify=ssl_verify, encryption_version=encryption_version)
 
     @staticmethod
     def get_global():
