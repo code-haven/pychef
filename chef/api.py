@@ -86,7 +86,7 @@ class ChefAPI(object):
             if os.path.exists(self.secret_file):
                 self.encryption_key = open(self.secret_file).read().strip()
         if secret_key is not None:
-            if encryption_key is not None:
+            if self.encryption_key is not None:
                 log.debug('Two encryption key found (file and parameter). The key passed as parameter will be used')
             self.encryption_key = secret_key
 
